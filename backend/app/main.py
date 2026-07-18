@@ -54,6 +54,41 @@ def _log_cors_config() -> None:
     except Exception:
         pass
 
+
+# Explicit HTTP middleware to ensure CORS headers are present on all responses
+from starlette.requests import Request
+from starlette.responses import Response
+
+
+@app.middleware("http")
+async def ensure_cors_headers(request: Request, call_next):
+    origin = request.headers.get("origin")
+    allowed_origin = None
+    if allow_all:
+        allowed_origin = "*"
+    elif origin and origin in cors_origins:
+        allowed_origin = origin
+
+    # Handle preflight
+    if request.method == "OPTIONS":
+        headers = {}
+        if allowed_origin:
+            headers["Access-Control-Allow-Origin"] = allowed_origin
+        headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS, PUT, DELETE, PATCH"
+        request_headers = request.headers.get("access-control-request-headers")
+        headers["Access-Control-Allow-Headers"] = request_headers or "*"
+        headers["Access-Control-Max-Age"] = "86400"
+        if not allow_all:
+            headers["Access-Control-Allow-Credentials"] = "true"
+        return Response(status_code=200, headers=headers)
+
+    response = await call_next(request)
+    if allowed_origin:
+        response.headers["Access-Control-Allow-Origin"] = allowed_origin
+    if not allow_all:
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
+
 ocr_service = OCRService()
 record_parser = RecordParser()
 
