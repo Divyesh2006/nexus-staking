@@ -1,6 +1,7 @@
 import type { ProcessResponse, StakingRecord } from './types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+const rawBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+const API_BASE_URL = String(rawBase).replace(/\/+$/, '');
 
 export function processScreenshots(files: File[], onProgress?: (progress: number, stage: string) => void) {
   return new Promise<ProcessResponse>((resolve, reject) => {
