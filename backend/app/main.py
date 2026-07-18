@@ -16,13 +16,43 @@ from app.services.parser import RecordParser
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+# Configure CORS middleware carefully:
+# - If the configured origins include '*' or are empty, allow all origins (no credentials).
+# - Otherwise, use the explicit list and allow credentials.
+cors_origins = settings.cors_origins or []
+allow_all = False
+if any(origin == "*" for origin in cors_origins):
+    allow_all = True
+if not cors_origins:
+    # No origins configured: default to allowing only localhost for safety
+    cors_origins = ["http://localhost:5173", "http://127.0.0.1:5173","https://nexus-staking.vercel.app"]
+
+if allow_all:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+# Log chosen CORS configuration on startup for debugging
+def _log_cors_config() -> None:
+    try:
+        import logging
+
+        logging.info("CORS configured. allow_all=%s, origins=%s", allow_all, cors_origins)
+    except Exception:
+        pass
 
 ocr_service = OCRService()
 record_parser = RecordParser()
