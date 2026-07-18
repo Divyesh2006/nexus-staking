@@ -34,11 +34,19 @@ class OCRService:
             self._paddle = None
             return
         try:
+            import logging
             from paddleocr import PaddleOCR  # type: ignore
 
             # instantiate only when needed
-            self._paddle = PaddleOCR(use_textline_orientation=True, lang="en")
+            try:
+                self._paddle = PaddleOCR(use_textline_orientation=True, lang="en")
+            except Exception as e:
+                logging.exception("Failed to instantiate PaddleOCR: %s", e)
+                self._paddle = None
         except Exception:
+            import logging, traceback
+            logging.exception("Failed to import PaddleOCR")
+            traceback.print_exc()
             self._paddle = None
 
     def _ensure_rapidocr(self) -> None:
@@ -50,10 +58,19 @@ class OCRService:
             self._rapidocr = None
             return
         try:
+            import logging
             from rapidocr_onnxruntime import RapidOCR  # type: ignore
-
-            self._rapidocr = RapidOCR()
+            try:
+                self._rapidocr = RapidOCR()
+            except Exception as e:
+                logging.exception("Failed to instantiate RapidOCR: %s", e)
+                import traceback
+                traceback.print_exc()
+                self._rapidocr = None
         except Exception:
+            import logging, traceback
+            logging.exception("Failed to import RapidOCR")
+            traceback.print_exc()
             self._rapidocr = None
 
     def _ensure_tesseract(self) -> None:
@@ -62,6 +79,14 @@ class OCRService:
         self._tesseract_initialized = True
         try:
             import pytesseract  # type: ignore
+            # verify tesseract binary is available
+            try:
+                # this calls the tesseract binary; it will raise if not found
+                _ = pytesseract.get_tesseract_version()
+            except Exception:
+                # mark as unavailable so we don't attempt to use it
+                self._tesseract = None
+                return
 
             self._tesseract = pytesseract
         except Exception:
@@ -98,14 +123,16 @@ class OCRService:
             except Exception:
                 pass
 
-        # Fallback to pytesseract (lazy-init)
-        self._ensure_tesseract()
-        if self._tesseract is not None:
-            try:
-                return self._tesseract.image_to_string(Image.fromarray(self._prepare_image(image_bytes)))
-            except Exception:
-                pass
         return ""
+
+    def backends_available(self) -> dict:
+        # Ensure lazy-init flags have been evaluated
+        self._ensure_paddle()
+        self._ensure_rapidocr()
+        return {
+            "paddle": self._paddle is not None,
+            "rapid": self._rapidocr is not None,
+        }
 
     def _flatten_paddle_result(self, result: object) -> list[str]:
         lines: list[str] = []

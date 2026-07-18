@@ -131,6 +131,19 @@ async def process_screenshots(files: list[UploadFile] = File(...)) -> ProcessRes
                 logging.info("OCR output for %s: length=%d, preview=%s", file.filename or "uploaded-image", len(ocr_text or ""), preview)
             except Exception:
                 pass
+            # If OCR produced no text, check whether any backends are available; if none, return a clear error
+            if not ocr_text:
+                backends = ocr_service.backends_available()
+                if not any(backends.values()):
+                    from fastapi import HTTPException
+
+                    raise HTTPException(
+                        status_code=503,
+                        detail=(
+                            "No OCR backends are available on the server. "
+                            "Set SKIP_HEAVY_OCR=false and ensure `paddleocr` or `rapidocr-onnxruntime` are installed and the instance has sufficient memory."
+                        ),
+                    )
             parsed_records, invalid_rows, duplicate_rows = record_parser.parse(ocr_text)
         skipped_rows += invalid_rows
         duplicate_count += duplicate_rows
