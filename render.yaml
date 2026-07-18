@@ -1,0 +1,23 @@
+# Render manifest for deploying frontend (static) and backend (Docker) services.
+# Connect this repository to Render and enable Auto-Deploy from the `main` branch.
+
+services:
+  - type: web
+    name: nexus-staking-backend
+    env: docker
+    dockerfilePath: backend/Dockerfile
+    branch: main
+    plan: free
+
+static_sites:
+  - name: nexus-staking-frontend
+    repo: .
+    branch: main
+    root: frontend
+    buildCommand: "npm ci --prefix frontend && npm run build --prefix frontend"
+    publishPath: frontend/dist
+    plan: free
+
+# Notes:
+# - After connecting the GitHub repo, create two services in Render using this manifest.
+# - Set any required environment variables in Render dashboard (CORS, secrets).
