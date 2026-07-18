@@ -111,17 +111,19 @@ def health() -> dict[str, str]:
 
 @app.post("/api/process", response_model=ProcessResponse)
 async def process_screenshots(files: list[UploadFile] = File(...)) -> ProcessResponse:
+    import logging, traceback
     all_records: list[StakingRecord] = []
     seen_ids: set[str] = set()
     skipped_rows = 0
     duplicate_count = 0
     source_files: list[str] = []
 
-    for file in files:
-        source_files.append(file.filename or "uploaded-image")
-        payload = await file.read()
-        ocr_text = ocr_service.extract_text(payload)
-        parsed_records, invalid_rows, duplicate_rows = record_parser.parse(ocr_text)
+    try:
+        for file in files:
+            source_files.append(file.filename or "uploaded-image")
+            payload = await file.read()
+            ocr_text = ocr_service.extract_text(payload)
+            parsed_records, invalid_rows, duplicate_rows = record_parser.parse(ocr_text)
         skipped_rows += invalid_rows
         duplicate_count += duplicate_rows
         for record in parsed_records:
@@ -130,6 +132,14 @@ async def process_screenshots(files: list[UploadFile] = File(...)) -> ProcessRes
                 continue
             seen_ids.add(record.staking_id)
             all_records.append(record)
+    except Exception as exc:
+        # Log full traceback for debugging (will appear in Render logs)
+        logging.error("Error in /api/process: %s", exc)
+        logging.error(traceback.format_exc())
+        # Return a controlled 500 response so gateway does not drop CORS headers
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=500, detail=str(exc))
 
     all_records.sort(key=lambda item: (item.staking_date, item.username, item.staking_id))
     return ProcessResponse(records=all_records, skipped_rows=skipped_rows, duplicate_count=duplicate_count, source_files=source_files)

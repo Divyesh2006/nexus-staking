@@ -28,6 +28,11 @@ class OCRService:
         if self._paddle_initialized:
             return
         self._paddle_initialized = True
+        # Allow disabling heavy OCR backends via env var to avoid OOM on small hosts.
+        import os
+        if os.environ.get("SKIP_HEAVY_OCR", "true").lower() in ("1", "true", "yes"):
+            self._paddle = None
+            return
         try:
             from paddleocr import PaddleOCR  # type: ignore
 
@@ -40,6 +45,10 @@ class OCRService:
         if self._rapidocr_initialized:
             return
         self._rapidocr_initialized = True
+        import os
+        if os.environ.get("SKIP_HEAVY_OCR", "true").lower() in ("1", "true", "yes"):
+            self._rapidocr = None
+            return
         try:
             from rapidocr_onnxruntime import RapidOCR  # type: ignore
 
