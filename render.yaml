@@ -4,10 +4,12 @@
 services:
   - type: web
     name: nexus-staking-backend
-    env: docker
-    dockerfilePath: backend/Dockerfile
+    env: python
+    buildCommand: "pip install --no-cache-dir -r backend/requirements.txt"
+    startCommand: "gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT --workers 1"
     branch: main
     plan: free
+
 
 static_sites:
   - name: nexus-staking-frontend
