@@ -123,6 +123,14 @@ async def process_screenshots(files: list[UploadFile] = File(...)) -> ProcessRes
             source_files.append(file.filename or "uploaded-image")
             payload = await file.read()
             ocr_text = ocr_service.extract_text(payload)
+            # Debug logging: show OCR output length and small preview
+            try:
+                import logging
+
+                preview = (ocr_text or "").replace("\n", " ")[:300]
+                logging.info("OCR output for %s: length=%d, preview=%s", file.filename or "uploaded-image", len(ocr_text or ""), preview)
+            except Exception:
+                pass
             parsed_records, invalid_rows, duplicate_rows = record_parser.parse(ocr_text)
         skipped_rows += invalid_rows
         duplicate_count += duplicate_rows
