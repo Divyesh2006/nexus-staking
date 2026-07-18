@@ -16,21 +16,41 @@ class OCRResult:
 
 class OCRService:
     def __init__(self) -> None:
+        # Delay importing and instantiating heavy OCR libraries until first use.
         self._paddle = None
         self._rapidocr = None
         self._tesseract = None
+        self._paddle_initialized = False
+        self._rapidocr_initialized = False
+        self._tesseract_initialized = False
+
+    def _ensure_paddle(self) -> None:
+        if self._paddle_initialized:
+            return
+        self._paddle_initialized = True
         try:
             from paddleocr import PaddleOCR  # type: ignore
 
+            # instantiate only when needed
             self._paddle = PaddleOCR(use_textline_orientation=True, lang="en")
         except Exception:
             self._paddle = None
+
+    def _ensure_rapidocr(self) -> None:
+        if self._rapidocr_initialized:
+            return
+        self._rapidocr_initialized = True
         try:
             from rapidocr_onnxruntime import RapidOCR  # type: ignore
 
             self._rapidocr = RapidOCR()
         except Exception:
             self._rapidocr = None
+
+    def _ensure_tesseract(self) -> None:
+        if self._tesseract_initialized:
+            return
+        self._tesseract_initialized = True
         try:
             import pytesseract  # type: ignore
 
@@ -41,6 +61,9 @@ class OCRService:
     def extract_text(self, image_bytes: bytes) -> str:
         raw_image = self._load_image(image_bytes)
         rgb_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGB)
+
+        # Try PaddleOCR if available (lazy-init)
+        self._ensure_paddle()
         if self._paddle is not None:
             try:
                 result = self._paddle.ocr(rgb_image, cls=True)
@@ -49,6 +72,9 @@ class OCRService:
                     return "\n".join(lines)
             except Exception:
                 pass
+
+        # Try RapidOCR if available (lazy-init)
+        self._ensure_rapidocr()
         if self._rapidocr is not None:
             try:
                 result, _elapsed = self._rapidocr(rgb_image)
@@ -62,6 +88,9 @@ class OCRService:
                     return "\n".join(lines)
             except Exception:
                 pass
+
+        # Fallback to pytesseract (lazy-init)
+        self._ensure_tesseract()
         if self._tesseract is not None:
             try:
                 return self._tesseract.image_to_string(Image.fromarray(self._prepare_image(image_bytes)))
