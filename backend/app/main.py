@@ -28,6 +28,17 @@ ocr_service = OCRService()
 record_parser = RecordParser()
 
 
+@app.on_event("startup")
+def _log_startup_settings() -> None:
+    # Log resolved CORS origins so deploy logs show what the app is using.
+    try:
+        import logging
+
+        logging.info("Resolved CORS_ORIGINS: %s", settings.cors_origins)
+    except Exception:
+        pass
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
