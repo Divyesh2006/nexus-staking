@@ -5,6 +5,9 @@ services:
   - type: web
     name: nexus-staking-backend
     env: python
+    envVars:
+      - key: SKIP_HEAVY_OCR
+        value: "false"
     buildCommand: "pip install --no-cache-dir -r backend/requirements.txt"
     # Increase gunicorn timeout to allow OCR model loading/processing to complete
     # (adjust number as needed; large OCR models may take many seconds).
