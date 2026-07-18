@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.venv/
+venv/
+
+# Model/cache directories
+ocr_models/
+models/
+*.ckpt
+*.pth
+
+# Editor
+.vscode/
+.idea/
+
+# Git
+.git
+
+# Build
+dist/
+build/
+
+# Node modules (if any accidentally present)
+node_modules/

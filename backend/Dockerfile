@@ -5,11 +5,12 @@ WORKDIR /srv/app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-COPY backend/requirements.txt ./requirements.txt
+# Install Python dependencies (expect build context to be the backend folder)
+COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend code
-COPY backend /srv/app
+# Copy backend code into the image
+COPY . /srv/app
 
 EXPOSE 8000
 
